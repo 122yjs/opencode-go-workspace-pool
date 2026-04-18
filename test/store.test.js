@@ -46,3 +46,28 @@ test("repository is sticky until failure and skips disabled workspaces", async (
   await repository.disableWorkspace(first.id);
   assert.equal((await repository.selectWorkspace("anthropic", new Date("2026-04-18T10:00:06.000Z"))).id, second.id);
 });
+
+test("repository prefers current workspace when manually selected", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "go-pool-store-"));
+  const storePath = path.join(tempDir, "opencode-go-workspaces.json");
+  const repository = await new WorkspaceRepository(storePath).load();
+
+  const first = await repository.addWorkspace("main", "key-main");
+  const second = await repository.addWorkspace("backup", "key-backup");
+
+  await repository.useWorkspace(second.id);
+
+  const selected = await repository.selectWorkspace("openai", new Date("2026-04-18T10:00:00.000Z"));
+  assert.equal(selected.id, second.id);
+
+  const current = repository.currentWorkspace();
+  assert.equal(current.id, second.id);
+
+  const snapshot = repository.snapshot();
+  assert.equal(snapshot.currentWorkspaceID, second.id);
+  assert.equal(snapshot.activeIndexByFamily.openai, second.id);
+
+  await repository.disableWorkspace(second.id);
+  const fallback = await repository.selectWorkspace("openai", new Date("2026-04-18T10:00:10.000Z"));
+  assert.equal(fallback.id, first.id);
+});

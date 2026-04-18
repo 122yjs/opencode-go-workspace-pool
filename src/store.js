@@ -24,7 +24,8 @@ export class WorkspaceRepository {
     this.state = {
       version: CURRENT_VERSION,
       workspaces: [],
-      activeIndexByFamily: {}
+      activeIndexByFamily: {},
+      currentWorkspaceID: null
     };
   }
 
@@ -39,7 +40,8 @@ export class WorkspaceRepository {
       this.state = {
         version: parsed.version || CURRENT_VERSION,
         workspaces: parsed.workspaces || parsed.accounts || [],
-        activeIndexByFamily: parsed.activeIndexByFamily || {}
+        activeIndexByFamily: parsed.activeIndexByFamily || {},
+        currentWorkspaceID: parsed.currentWorkspaceID || null
       };
     } catch (error) {
       if (error && error.code === "ENOENT") {
@@ -76,6 +78,8 @@ export class WorkspaceRepository {
       lastError: workspace.lastError || "",
       lastSwitchReason: workspace.lastSwitchReason || "",
       activeFor: activeByWorkspace.get(workspace.id) || []
+      ,
+      current: this.state.currentWorkspaceID === workspace.id
     }));
   }
 
@@ -114,13 +118,42 @@ export class WorkspaceRepository {
         delete this.state.activeIndexByFamily[family];
       }
     }
+    if (this.state.currentWorkspaceID === id) {
+      this.state.currentWorkspaceID = null;
+    }
     await this.save();
+  }
+
+  currentWorkspace() {
+    if (!this.state.currentWorkspaceID) return null;
+    const workspace = this.getByID(this.state.currentWorkspaceID);
+    return workspace ? structuredClone(workspace) : null;
+  }
+
+  async useWorkspace(id) {
+    const workspace = this.requireWorkspace(id);
+    if (!workspace.enabled) {
+      throw new Error(`workspace "${id}" is disabled`);
+    }
+    this.state.currentWorkspaceID = id;
+    await this.save();
+    return structuredClone(workspace);
   }
 
   async selectWorkspace(family, now = new Date()) {
     if (!family) throw new Error("family is required");
 
     const activeID = this.state.activeIndexByFamily[family];
+    const currentID = this.state.currentWorkspaceID;
+    if (currentID) {
+      const current = this.getByID(currentID);
+      if (current && current.enabled && !isCoolingDown(current, now)) {
+        this.state.activeIndexByFamily[family] = current.id;
+        await this.save();
+        return structuredClone(current);
+      }
+    }
+
     if (activeID) {
       const sticky = this.getByID(activeID);
       if (sticky && sticky.enabled && !isCoolingDown(sticky, now)) {
@@ -221,6 +254,9 @@ export class WorkspaceRepository {
         if (activeID === id) {
           delete this.state.activeIndexByFamily[family];
         }
+      }
+      if (this.state.currentWorkspaceID === id) {
+        this.state.currentWorkspaceID = null;
       }
     }
     await this.save();

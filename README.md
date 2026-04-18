@@ -16,6 +16,8 @@ OpenCode Go workspace failover plugin.
 ```bash
 node ./bin/go-pool.js add --label main --api-key "YOUR_GO_KEY"
 node ./bin/go-pool.js add --label backup --api-key "YOUR_OTHER_GO_KEY"
+node ./bin/go-pool.js use <workspace-id>
+node ./bin/go-pool.js current
 ```
 
 4. Print the config snippet:
@@ -43,6 +45,8 @@ node ./bin/go-pool.js status
 node ./bin/go-pool.js enable <workspace-id>
 node ./bin/go-pool.js disable <workspace-id>
 node ./bin/go-pool.js delete <workspace-id>
+node ./bin/go-pool.js use <workspace-id>
+node ./bin/go-pool.js current
 node ./bin/go-pool.js config
 ```
 
@@ -57,3 +61,12 @@ Environment variables also work:
 - The store file is written with `0600` permissions
 - Logs, `list`, `status`, and README examples never echo raw keys
 - The generated OpenCode config uses a dummy local provider key because the real Go keys stay in the workspace store
+
+## In OpenCode
+
+After the plugin is loaded, these tools are available:
+
+- `workspace_list`
+- `workspace_status`
+- `workspace_current`
+- `workspace_use`

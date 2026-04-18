@@ -25,6 +25,10 @@ export async function runCLI(argv, { stdout = process.stdout, stderr = process.s
       return runToggle(args, { repository, stdout }, false);
     case "delete":
       return runDelete(args, { repository, stdout });
+    case "use":
+      return runUse(args, { repository, stdout });
+    case "current":
+      return runCurrent({ repository, stdout });
     case "config":
       return runConfig({ stdout });
     default:
@@ -39,6 +43,8 @@ const usageText = `go-pool commands:
   enable <workspace-id>
   disable <workspace-id>
   delete <workspace-id>
+  use <workspace-id>
+  current
   config`;
 
 async function runAdd(args, { repository, stdout, stderr, stdin, env }) {
@@ -75,10 +81,11 @@ async function runList({ repository, stdout }) {
 async function runStatus({ repository, stdout }) {
   const statuses = repository.status();
   stdout.write(formatTable(
-    ["ID", "WORKSPACE", "ENABLED", "ACTIVE_FOR", "COOLDOWN_UNTIL", "LAST_USED_AT", "LAST_ERROR"],
+    ["ID", "WORKSPACE", "CURRENT", "ENABLED", "ACTIVE_FOR", "COOLDOWN_UNTIL", "LAST_USED_AT", "LAST_ERROR"],
     statuses.map((status) => [
       status.id,
       status.label,
+      status.current ? "*" : "",
       String(status.enabled),
       status.activeFor.join(","),
       status.cooldownUntil || "",
@@ -106,6 +113,28 @@ async function runDelete(args, { repository, stdout }) {
   if (!workspaceID) throw new Error("delete requires exactly one workspace id");
   await repository.deleteWorkspace(workspaceID);
   stdout.write(`${workspaceID} deleted\n`);
+  return 0;
+}
+
+async function runUse(args, { repository, stdout }) {
+  const [workspaceID] = args;
+  if (!workspaceID) throw new Error("use requires exactly one workspace id");
+  await repository.useWorkspace(workspaceID);
+  stdout.write(`current workspace ${workspaceID}\n`);
+  return 0;
+}
+
+async function runCurrent({ repository, stdout }) {
+  const current = repository.currentWorkspace();
+  if (!current) {
+    stdout.write("No current workspace selected\n");
+    return 0;
+  }
+
+  stdout.write(formatTable(
+    ["ID", "WORKSPACE", "CURRENT", "ENABLED"],
+    [[current.id, current.label, "*", String(current.enabled)]]
+  ));
   return 0;
 }
 
