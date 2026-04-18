@@ -1,6 +1,8 @@
 import { ensureWorkspacePoolServer } from "../src/server.js";
 import { WorkspaceRepository } from "../src/store.js";
 
+const DUMMY_AUTH_KEY = "workspace-pool-managed";
+
 export async function OpencodeGoWorkspacePoolPlugin() {
   await ensureWorkspacePoolServer();
   const getRepository = async () => new WorkspaceRepository().load();
@@ -77,6 +79,119 @@ export async function OpencodeGoWorkspacePoolPlugin() {
           return `Current workspace set to ${workspace.id} (${workspace.label}).`;
         }
       }
+    },
+    auth: {
+      provider: "opencode-go-workspace-pool",
+      loader: async () => ({}),
+      methods: [
+        {
+          type: "api",
+          label: "Add OpenCode Go Workspace",
+          prompts: [
+            {
+              type: "text",
+              key: "label",
+              message: "Workspace label",
+              placeholder: "main"
+            },
+            {
+              type: "text",
+              key: "api_key",
+              message: "Workspace API key",
+              placeholder: "sk-...",
+              validate: (value) => value ? undefined : "api_key is required"
+            }
+          ],
+          authorize: async (inputs = {}) => {
+            const repository = await getRepository();
+            if (!inputs.label || !inputs.api_key) {
+              return { type: "failed" };
+            }
+            await repository.addWorkspace(inputs.label, inputs.api_key);
+            return { type: "success", key: DUMMY_AUTH_KEY };
+          }
+        },
+        {
+          type: "api",
+          label: "Use OpenCode Go Workspace",
+          prompts: [
+            {
+              type: "text",
+              key: "workspace_id",
+              message: "Workspace ID",
+              placeholder: "ws-..."
+            }
+          ],
+          authorize: async (inputs = {}) => {
+            const repository = await getRepository();
+            if (!inputs.workspace_id) {
+              return { type: "failed" };
+            }
+            await repository.useWorkspace(inputs.workspace_id);
+            return { type: "success", key: DUMMY_AUTH_KEY };
+          }
+        },
+        {
+          type: "api",
+          label: "Enable OpenCode Go Workspace",
+          prompts: [
+            {
+              type: "text",
+              key: "workspace_id",
+              message: "Workspace ID",
+              placeholder: "ws-..."
+            }
+          ],
+          authorize: async (inputs = {}) => {
+            const repository = await getRepository();
+            if (!inputs.workspace_id) {
+              return { type: "failed" };
+            }
+            await repository.enableWorkspace(inputs.workspace_id);
+            return { type: "success", key: DUMMY_AUTH_KEY };
+          }
+        },
+        {
+          type: "api",
+          label: "Disable OpenCode Go Workspace",
+          prompts: [
+            {
+              type: "text",
+              key: "workspace_id",
+              message: "Workspace ID",
+              placeholder: "ws-..."
+            }
+          ],
+          authorize: async (inputs = {}) => {
+            const repository = await getRepository();
+            if (!inputs.workspace_id) {
+              return { type: "failed" };
+            }
+            await repository.disableWorkspace(inputs.workspace_id);
+            return { type: "success", key: DUMMY_AUTH_KEY };
+          }
+        },
+        {
+          type: "api",
+          label: "Delete OpenCode Go Workspace",
+          prompts: [
+            {
+              type: "text",
+              key: "workspace_id",
+              message: "Workspace ID",
+              placeholder: "ws-..."
+            }
+          ],
+          authorize: async (inputs = {}) => {
+            const repository = await getRepository();
+            if (!inputs.workspace_id) {
+              return { type: "failed" };
+            }
+            await repository.deleteWorkspace(inputs.workspace_id);
+            return { type: "success", key: DUMMY_AUTH_KEY };
+          }
+        }
+      ]
     }
   };
 }

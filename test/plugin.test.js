@@ -36,3 +36,41 @@ test("plugin exposes workspace tools that can switch current workspace", async (
   assert.match(current, /ws-backup/);
   assert.match(current, /backup/);
 });
+
+test("plugin exposes auth methods for workspace management", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "go-pool-plugin-auth-"));
+  process.env.GO_POOL_CONFIG_DIR = tempDir;
+
+  const plugin = await OpencodeGoWorkspacePoolPlugin();
+  assert.ok(plugin.auth);
+  assert.equal(plugin.auth.provider, "opencode-go-workspace-pool");
+
+  const addMethod = plugin.auth.methods.find((method) => method.label === "Add OpenCode Go Workspace");
+  assert.ok(addMethod);
+
+  const addResult = await addMethod.authorize({
+    label: "main",
+    api_key: "sk-main"
+  });
+  assert.deepEqual(addResult, {
+    type: "success",
+    key: "workspace-pool-managed"
+  });
+
+  const repositoryPath = path.join(tempDir, "opencode-go-workspaces.json");
+  const stored = JSON.parse(await fs.readFile(repositoryPath, "utf8"));
+  const workspaceID = stored.workspaces[0].id;
+
+  const useMethod = plugin.auth.methods.find((method) => method.label === "Use OpenCode Go Workspace");
+  assert.ok(useMethod);
+  const useResult = await useMethod.authorize({
+    workspace_id: workspaceID
+  });
+  assert.deepEqual(useResult, {
+    type: "success",
+    key: "workspace-pool-managed"
+  });
+
+  const updated = JSON.parse(await fs.readFile(repositoryPath, "utf8"));
+  assert.equal(updated.currentWorkspaceID, workspaceID);
+});

@@ -27,6 +27,7 @@ node ./bin/go-pool.js config
 ```
 
 5. Paste that snippet into `~/.config/opencode/opencode.json`.
+6. In OpenCode, you can also manage workspaces with `auth login`.
 
 ## What it does
 
@@ -70,3 +71,11 @@ After the plugin is loaded, these tools are available:
 - `workspace_status`
 - `workspace_current`
 - `workspace_use`
+
+The auth menu also exposes:
+
+- `Add OpenCode Go Workspace`
+- `Use OpenCode Go Workspace`
+- `Enable OpenCode Go Workspace`
+- `Disable OpenCode Go Workspace`
+- `Delete OpenCode Go Workspace`
