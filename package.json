@@ -1,0 +1,33 @@
+{
+  "name": "opencode-go-workspace-pool",
+  "version": "0.1.0",
+  "description": "Local OpenCode plugin and proxy for OpenCode Go workspace failover",
+  "type": "module",
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/122yjs/opencode-go-workspace-pool.git"
+  },
+  "homepage": "https://github.com/122yjs/opencode-go-workspace-pool#readme",
+  "bugs": {
+    "url": "https://github.com/122yjs/opencode-go-workspace-pool/issues"
+  },
+  "bin": {
+    "go-pool": "./bin/go-pool.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "workspace",
+    "failover",
+    "opencode-go"
+  ],
+  "license": "MIT"
+}
