@@ -61,8 +61,12 @@ test("plugin exposes auth methods for workspace management", async () => {
   const stored = JSON.parse(await fs.readFile(repositoryPath, "utf8"));
   const workspaceID = stored.workspaces[0].id;
 
-  const useMethod = plugin.auth.methods.find((method) => method.label === "Use OpenCode Go Workspace");
+  const reloadedPlugin = await OpencodeGoWorkspacePoolPlugin();
+  const useMethod = reloadedPlugin.auth.methods.find((method) => method.label === "Use OpenCode Go Workspace");
   assert.ok(useMethod);
+  assert.equal(useMethod.prompts[0].type, "select");
+  assert.equal(useMethod.prompts[0].options.length, 1);
+  assert.match(useMethod.prompts[0].options[0].label, /main/);
   const useResult = await useMethod.authorize({
     workspace_id: workspaceID
   });
@@ -73,4 +77,30 @@ test("plugin exposes auth methods for workspace management", async () => {
 
   const updated = JSON.parse(await fs.readFile(repositoryPath, "utf8"));
   assert.equal(updated.currentWorkspaceID, workspaceID);
+});
+
+test("plugin auth methods expose select choices for existing workspaces", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "go-pool-plugin-auth-select-"));
+  process.env.GO_POOL_CONFIG_DIR = tempDir;
+
+  await fs.writeFile(path.join(tempDir, "opencode-go-workspaces.json"), JSON.stringify({
+    version: 1,
+    workspaces: [
+      { id: "ws-main", label: "main", apiKey: "sk-main", enabled: true, lastUsedAt: null, cooldownUntil: null, lastError: "", lastSwitchReason: "" },
+      { id: "ws-backup", label: "backup", apiKey: "sk-backup", enabled: false, lastUsedAt: null, cooldownUntil: null, lastError: "", lastSwitchReason: "" }
+    ],
+    activeIndexByFamily: {},
+    currentWorkspaceID: null
+  }, null, 2));
+
+  const plugin = await OpencodeGoWorkspacePoolPlugin();
+  const useMethod = plugin.auth.methods.find((method) => method.label === "Use OpenCode Go Workspace");
+  const enableMethod = plugin.auth.methods.find((method) => method.label === "Enable OpenCode Go Workspace");
+  const disableMethod = plugin.auth.methods.find((method) => method.label === "Disable OpenCode Go Workspace");
+  const deleteMethod = plugin.auth.methods.find((method) => method.label === "Delete OpenCode Go Workspace");
+
+  assert.deepEqual(useMethod.prompts[0].options.map((option) => option.value), ["ws-main"]);
+  assert.deepEqual(enableMethod.prompts[0].options.map((option) => option.value), ["ws-backup"]);
+  assert.deepEqual(disableMethod.prompts[0].options.map((option) => option.value), ["ws-main"]);
+  assert.deepEqual(deleteMethod.prompts[0].options.map((option) => option.value), ["ws-main", "ws-backup"]);
 });

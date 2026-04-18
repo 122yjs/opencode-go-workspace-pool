@@ -6,6 +6,144 @@ const DUMMY_AUTH_KEY = "workspace-pool-managed";
 export async function OpencodeGoWorkspacePoolPlugin() {
   await ensureWorkspacePoolServer();
   const getRepository = async () => new WorkspaceRepository().load();
+  const repository = await getRepository();
+  const statusRows = repository.status();
+  const enabledOptions = statusRows
+    .filter((status) => status.enabled)
+    .map((status) => ({
+      label: `${status.label} (${status.id})${status.current ? " [current]" : ""}`,
+      value: status.id
+    }));
+  const disabledOptions = statusRows
+    .filter((status) => !status.enabled)
+    .map((status) => ({
+      label: `${status.label} (${status.id})`,
+      value: status.id
+    }));
+  const allOptions = statusRows.map((status) => ({
+    label: `${status.label} (${status.id})${status.current ? " [current]" : ""}`,
+    value: status.id
+  }));
+  const methods = [
+    {
+      type: "api",
+      label: "Add OpenCode Go Workspace",
+      prompts: [
+        {
+          type: "text",
+          key: "label",
+          message: "Workspace label",
+          placeholder: "main"
+        },
+        {
+          type: "text",
+          key: "api_key",
+          message: "Workspace API key",
+          placeholder: "sk-...",
+          validate: (value) => value ? undefined : "api_key is required"
+        }
+      ],
+      authorize: async (inputs = {}) => {
+        const repository = await getRepository();
+        if (!inputs.label || !inputs.api_key) {
+          return { type: "failed" };
+        }
+        await repository.addWorkspace(inputs.label, inputs.api_key);
+        return { type: "success", key: DUMMY_AUTH_KEY };
+      }
+    }
+  ];
+
+  if (enabledOptions.length > 0) {
+    methods.push(
+      {
+        type: "api",
+        label: "Use OpenCode Go Workspace",
+        prompts: [
+          {
+            type: "select",
+            key: "workspace_id",
+            message: "Workspace",
+            options: enabledOptions
+          }
+        ],
+        authorize: async (inputs = {}) => {
+          const repository = await getRepository();
+          if (!inputs.workspace_id) {
+            return { type: "failed" };
+          }
+          await repository.useWorkspace(inputs.workspace_id);
+          return { type: "success", key: DUMMY_AUTH_KEY };
+        }
+      },
+      {
+        type: "api",
+        label: "Disable OpenCode Go Workspace",
+        prompts: [
+          {
+            type: "select",
+            key: "workspace_id",
+            message: "Workspace",
+            options: enabledOptions
+          }
+        ],
+        authorize: async (inputs = {}) => {
+          const repository = await getRepository();
+          if (!inputs.workspace_id) {
+            return { type: "failed" };
+          }
+          await repository.disableWorkspace(inputs.workspace_id);
+          return { type: "success", key: DUMMY_AUTH_KEY };
+        }
+      }
+    );
+  }
+
+  if (disabledOptions.length > 0) {
+    methods.push({
+      type: "api",
+      label: "Enable OpenCode Go Workspace",
+      prompts: [
+        {
+          type: "select",
+          key: "workspace_id",
+          message: "Workspace",
+          options: disabledOptions
+        }
+      ],
+      authorize: async (inputs = {}) => {
+        const repository = await getRepository();
+        if (!inputs.workspace_id) {
+          return { type: "failed" };
+        }
+        await repository.enableWorkspace(inputs.workspace_id);
+        return { type: "success", key: DUMMY_AUTH_KEY };
+      }
+    });
+  }
+
+  if (allOptions.length > 0) {
+    methods.push({
+      type: "api",
+      label: "Delete OpenCode Go Workspace",
+      prompts: [
+        {
+          type: "select",
+          key: "workspace_id",
+          message: "Workspace",
+          options: allOptions
+        }
+      ],
+      authorize: async (inputs = {}) => {
+        const repository = await getRepository();
+        if (!inputs.workspace_id) {
+          return { type: "failed" };
+        }
+        await repository.deleteWorkspace(inputs.workspace_id);
+        return { type: "success", key: DUMMY_AUTH_KEY };
+      }
+    });
+  }
 
   return {
     tool: {
@@ -83,115 +221,7 @@ export async function OpencodeGoWorkspacePoolPlugin() {
     auth: {
       provider: "opencode-go-workspace-pool",
       loader: async () => ({}),
-      methods: [
-        {
-          type: "api",
-          label: "Add OpenCode Go Workspace",
-          prompts: [
-            {
-              type: "text",
-              key: "label",
-              message: "Workspace label",
-              placeholder: "main"
-            },
-            {
-              type: "text",
-              key: "api_key",
-              message: "Workspace API key",
-              placeholder: "sk-...",
-              validate: (value) => value ? undefined : "api_key is required"
-            }
-          ],
-          authorize: async (inputs = {}) => {
-            const repository = await getRepository();
-            if (!inputs.label || !inputs.api_key) {
-              return { type: "failed" };
-            }
-            await repository.addWorkspace(inputs.label, inputs.api_key);
-            return { type: "success", key: DUMMY_AUTH_KEY };
-          }
-        },
-        {
-          type: "api",
-          label: "Use OpenCode Go Workspace",
-          prompts: [
-            {
-              type: "text",
-              key: "workspace_id",
-              message: "Workspace ID",
-              placeholder: "ws-..."
-            }
-          ],
-          authorize: async (inputs = {}) => {
-            const repository = await getRepository();
-            if (!inputs.workspace_id) {
-              return { type: "failed" };
-            }
-            await repository.useWorkspace(inputs.workspace_id);
-            return { type: "success", key: DUMMY_AUTH_KEY };
-          }
-        },
-        {
-          type: "api",
-          label: "Enable OpenCode Go Workspace",
-          prompts: [
-            {
-              type: "text",
-              key: "workspace_id",
-              message: "Workspace ID",
-              placeholder: "ws-..."
-            }
-          ],
-          authorize: async (inputs = {}) => {
-            const repository = await getRepository();
-            if (!inputs.workspace_id) {
-              return { type: "failed" };
-            }
-            await repository.enableWorkspace(inputs.workspace_id);
-            return { type: "success", key: DUMMY_AUTH_KEY };
-          }
-        },
-        {
-          type: "api",
-          label: "Disable OpenCode Go Workspace",
-          prompts: [
-            {
-              type: "text",
-              key: "workspace_id",
-              message: "Workspace ID",
-              placeholder: "ws-..."
-            }
-          ],
-          authorize: async (inputs = {}) => {
-            const repository = await getRepository();
-            if (!inputs.workspace_id) {
-              return { type: "failed" };
-            }
-            await repository.disableWorkspace(inputs.workspace_id);
-            return { type: "success", key: DUMMY_AUTH_KEY };
-          }
-        },
-        {
-          type: "api",
-          label: "Delete OpenCode Go Workspace",
-          prompts: [
-            {
-              type: "text",
-              key: "workspace_id",
-              message: "Workspace ID",
-              placeholder: "ws-..."
-            }
-          ],
-          authorize: async (inputs = {}) => {
-            const repository = await getRepository();
-            if (!inputs.workspace_id) {
-              return { type: "failed" };
-            }
-            await repository.deleteWorkspace(inputs.workspace_id);
-            return { type: "success", key: DUMMY_AUTH_KEY };
-          }
-        }
-      ]
+      methods
     }
   };
 }
